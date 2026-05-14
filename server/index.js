@@ -2,14 +2,30 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
-
-require('./config/db');
+const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 const clientOrigin = process.env.CLIENT_ORIGIN || 'http://localhost:5173';
 
-app.use(cors({ origin: clientOrigin, credentials: true }));
+// Auto-init database if missing
+const dbDir = path.join(__dirname, 'data');
+if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
+
+require('./config/db');
+
+// Auto-run init-db if database is empty
+const dbPath = path.join(__dirname, 'data', 'caretrack.sqlite');
+if (!fs.existsSync(dbPath) || fs.statSync(dbPath).size === 0) {
+  try {
+    require('./scripts/init-db');
+  } catch (e) {
+    console.error('DB init error:', e.message);
+  }
+}
+
+app.use(cors({ origin: '*', credentials: true }));
 app.use(express.json({ limit: '1mb' }));
 app.use(morgan('dev'));
 
